@@ -9,6 +9,7 @@ from scipy.ndimage.interpolation import shift
 from window import Window
 import global_vars as g
 import pyqtgraph as pg
+from time import time
 
 class Beam_Splitter(BaseProcess_noPriorWindow):
     def __init__(self):
@@ -18,30 +19,32 @@ class Beam_Splitter(BaseProcess_noPriorWindow):
         '''
         plots red_window over green_window, shifted by (x_shift, y_shift) pixels
         '''
+        self.window.close()
+        del self.window
+        g.m.statusBar().showMessage("Applying beam splitter shift ...")
+        t = time()
         imR = red_window.image
         t, w, h = imR.shape
         if split_type == 'Vertical Split':
             imR, imG = imR[:, :w // 2, :], imR[:, w // 2:, :]
-            self.newname = "%s Vertical Split" % (red_window.name)
+            rName = "%s Left Half" % (red_window.name)
+            gName = "%s Right Half shifted (%d, %d)" % (red_window.name, x_shift, y_shift)
         elif split_type == 'Horizontal Split':
             imR, imG = imR[:, :, :h // 2], imR[:, :, h // 2:]
-            self.newname = "%s Horizontal Split" % (red_window.name)
-        elif split_type == 'Two Windows' and winGreen != None:
-            self.newname = "Overlay %s on %s" % (green_window.name, red_window.name)
+            rName = "%s Top Half" % (red_window.name)
+            gName = "%s Bottom Half shifted (%d, %d)" % (red_window.name, x_shift, y_shift)
+        elif split_type == 'Two Windows' and green_window != None:
+            gName = "%s shifted (%d, %d)" % (green_window.name, x_shift, y_shift)
+            rName = ''
             imG = green_window.image
         imG = self.pad_shift(imG, np.shape(imR), x_shift, y_shift)
-        self.newtif = np.hstack((imR, imG))
-        self.newname += " (%s, %s)" % (x_shift, y_shift)
-        self.command = 'beam_splitter(%s, %s, %s, %s, %s)' % (red_window, green_window, x_shift, y_shift, split_type)
-        return self.end()
-    
-    def make_colored(self, im, color):
-        imR = im if color == 0 else np.zeros_like(im)
-        imG = im if color == 1 else np.zeros_like(im)
-        imB = im if color == 2 else np.zeros_like(im)
-        return np.dstack((imR, imG, imB))
-        #return np.stack((im if color == 0 else np.zeros_like(im), im if color == 1 else np.zeros_like(im), im if color == 2 else np.zeros_like(im)), np.ndim(im))
-
+        command = 'beam_splitter(%s, %s, %s, %s, %s)' % (red_window, green_window, x_shift, y_shift, split_type)
+        g.m.statusBar().showMessage("Successfully shifted (%s s)" % (time() - t))
+        if rName:
+            winR = Window(imR, name=rName, commands=[command])
+            winR.imageview.setLevels(self.minlevel, self.maxlevel)
+        winG = Window(imG, name=gName, commands=[command])
+        winG.imageview.setLevels(self.minlevel, self.maxlevel)
 
     def pad_shift(self, imGreen, size, x_shift, y_shift):
         '''
@@ -51,9 +54,21 @@ class Beam_Splitter(BaseProcess_noPriorWindow):
         imGreen_shifted = np.zeros(size)
         if imGreen.ndim == 2:
             imGreen_shifted[:g_size[0], :g_size[1]] = imGreen
+            imGreen_shifted = shift(imGreen_shifted, (x_shift, y_shift))
         elif imGreen.ndim == 3:
-            imGreen_shifted[:, :g_size[1], :g_size[2]] = imGreen
-        imGreen_shifted = shift(imGreen_shifted, (0, x_shift, y_shift) if len(size) == 3 else (x_shift, y_shift))
+            rt, rw, rh = size
+            gt, gw, gh = g_size
+            r_left = max(0, x_shift)
+            r_top = max(0, y_shift)
+            r_right = min(rw, gw + x_shift)
+            r_bottom = min(rh, gh + y_shift)
+
+            g_left = max(0, -x_shift)
+            g_top = max(0, -y_shift)
+            g_right = min(gw, rw - x_shift)
+            g_bottom = min(gh, rh - y_shift)
+            
+            imGreen_shifted[:, r_left:r_right, r_top:r_bottom] = imGreen[:, g_left:g_right, g_top:g_bottom]        
         return imGreen_shifted
 
     def keyPressed(self, event):
@@ -65,11 +80,14 @@ class Beam_Splitter(BaseProcess_noPriorWindow):
             self.x_shift_spin.setValue(self.x_shift_spin.value() - 1)
         if event.key() == Qt.Key_Right:
             self.x_shift_spin.setValue(self.x_shift_spin.value() + 1)
+        if event.key() == 16777220: # Enter
+            self.call_from_gui()
         event.accept()
 
-    def preview(self):
+    def preview(self, extra=0):
         winRed = self.getValue('red_window')
         winGreen = self.getValue('green_window')
+
         mode = self.getValue('split_type')
         x_shift = self.getValue('x_shift')
         y_shift = self.getValue('y_shift')
@@ -83,18 +101,26 @@ class Beam_Splitter(BaseProcess_noPriorWindow):
             elif mode == 'Two Windows' and winGreen != None:
                 imG = winGreen.image[winGreen.currentIndex]
             else:
+                if hasattr(self, 'window'):
+                    self.window.hide()
                 return
             imG = self.pad_shift(imG, np.shape(imR), x_shift, y_shift)
-            imG = self.make_colored(imG, 1)
-            imR = self.make_colored(imR, 0)
-            stacked = imR + imG
+            self.minlevel = np.min([np.min(imG), np.min(imR)])
+            self.maxlevel = np.max([np.max(imG), np.max(imR)])
+            
+            imZ = np.zeros_like(imR)
+            stacked = np.dstack((imR, imG, imZ))
             if not hasattr(self, 'window') or not self.window.isVisible():
                 self.window = Window(stacked)
+                self.window.imageview.setLevels(self.minlevel, self.maxlevel)
                 self.window.imageview.keyPressEvent = self.keyPressed
-                self.window.closeEvent = lambda ev: self.ui.close()
+                self.window.closeEvent = self.closeEvent
             else:
                 self.window.imageview.setImage(stacked, autoLevels=False, autoRange=False)
         
+    def closeEvent(self, event):
+        self.ui.close()
+        event.accept()
 
     def gui(self):
         self.gui_reset()
