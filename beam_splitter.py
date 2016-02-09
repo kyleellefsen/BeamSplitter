@@ -15,7 +15,7 @@ class Beam_Splitter(BaseProcess_noPriorWindow):
     def __init__(self):
         BaseProcess_noPriorWindow.__init__(self)
 
-    def __call__(self, red_window, green_window, x_shift, y_shift, split_type='Two Windows'):
+    def __call__(self, red_window, green_window, x_shift, y_shift):
         '''
         plots red_window over green_window, shifted by (x_shift, y_shift) pixels
         '''
@@ -25,26 +25,16 @@ class Beam_Splitter(BaseProcess_noPriorWindow):
         t = time()
         imR = red_window.image
         t, w, h = imR.shape
-        if split_type == 'Vertical Split':
-            imR, imG = imR[:, :w // 2, :], imR[:, w // 2:, :]
-            rName = "%s Left Half" % (red_window.name)
-            gName = "%s Right Half shifted (%d, %d)" % (red_window.name, x_shift, y_shift)
-        elif split_type == 'Horizontal Split':
-            imR, imG = imR[:, :, :h // 2], imR[:, :, h // 2:]
-            rName = "%s Top Half" % (red_window.name)
-            gName = "%s Bottom Half shifted (%d, %d)" % (red_window.name, x_shift, y_shift)
-        elif split_type == 'Two Windows' and green_window != None:
+        if red_window != None and green_window != None:
             gName = "%s shifted (%d, %d)" % (green_window.name, x_shift, y_shift)
-            rName = ''
             imG = green_window.image
         imG = self.pad_shift(imG, np.shape(imR), x_shift, y_shift)
-        command = 'beam_splitter(%s, %s, %s, %s, %s)' % (red_window, green_window, x_shift, y_shift, split_type)
+        command = 'beam_splitter(%s, %s, %s, %s)' % (red_window, green_window, x_shift, y_shift)
         g.m.statusBar().showMessage("Successfully shifted (%s s)" % (time() - t))
-        if rName:
-            winR = Window(imR, name=rName, commands=[command])
-            winR.imageview.setLevels(self.minlevel, self.maxlevel)
-        winG = Window(imG, name=gName, commands=[command])
-        winG.imageview.setLevels(self.minlevel, self.maxlevel)
+        green_window.imageview.setImage(imG)
+        green_window.setName(gName)
+        green_window.commands = [command]
+        green_window.imageview.setLevels(self.minlevel, self.maxlevel)
 
     def pad_shift(self, imGreen, size, x_shift, y_shift):
         '''
@@ -88,17 +78,12 @@ class Beam_Splitter(BaseProcess_noPriorWindow):
         winRed = self.getValue('red_window')
         winGreen = self.getValue('green_window')
 
-        mode = self.getValue('split_type')
         x_shift = self.getValue('x_shift')
         y_shift = self.getValue('y_shift')
         if winRed != None:
             imR = winRed.image[winRed.currentIndex]
             w, h = imR.shape
-            if mode == 'Vertical Split':
-                imR, imG = imR[:w // 2, :], imR[w // 2:, :]
-            elif mode == 'Horizontal Split':
-                imR, imG = imR[:, :h // 2], imR[:, h // 2:]
-            elif mode == 'Two Windows' and winGreen != None:
+            if winGreen != None:
                 imG = winGreen.image[winGreen.currentIndex]
             else:
                 if hasattr(self, 'window'):
@@ -126,16 +111,11 @@ class Beam_Splitter(BaseProcess_noPriorWindow):
         self.gui_reset()
         red_window=WindowSelector()
         self.green_window=WindowSelector()
-        self.green_window.setEnabled(False)
         self.x_shift_spin = pg.SpinBox(int=True, step=1)
         self.y_shift_spin = pg.SpinBox(int=True, step=1)
-        self.windowDropDown = QComboBox()
-        self.windowDropDown.addItems(['Vertical Split', 'Horizontal Split', 'Two Windows'])
 
-        self.items.append({'name': 'red_window', 'string': 'Red Background Image', 'object': red_window})
-        self.items.append({'name': 'split_type', 'string': 'Overlay Type', 'object': self.windowDropDown})
-        self.windowDropDown.currentIndexChanged.connect(lambda v: self.green_window.setEnabled(self.windowDropDown.itemText(v) == 'Two Windows'))
-        self.items.append({'name': 'green_window', 'string': 'Green Foreground Image', 'object': self.green_window})
+        self.items.append({'name': 'red_window', 'string': 'Overlay Red Windows', 'object': red_window})
+        self.items.append({'name': 'green_window', 'string': 'With Green Window', 'object': self.green_window})
         self.items.append({'name': 'x_shift', 'string': 'X Pixel Shift', 'object': self.x_shift_spin})
         self.items.append({'name': 'y_shift', 'string': 'Y Pixel Shift', 'object': self.y_shift_spin})
         super().gui()
