@@ -1,4 +1,4 @@
-<plugin name=Beam Splitter>
+<plugin name="Beam Splitter">
 	<author>
 		Brett Settle
 	</author>
