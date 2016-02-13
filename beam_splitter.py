@@ -14,11 +14,14 @@ from time import time
 class Beam_Splitter(BaseProcess_noPriorWindow):
     def __init__(self):
         BaseProcess_noPriorWindow.__init__(self)
+        self.current_red = None
+        self.current_green = None
 
     def __call__(self, red_window, green_window, x_shift, y_shift):
         '''
         plots red_window over green_window, shifted by (x_shift, y_shift) pixels
         '''
+        self.previewing = False
         self.window.close()
         del self.window
         g.m.statusBar().showMessage("Applying beam splitter shift ...")
@@ -72,11 +75,36 @@ class Beam_Splitter(BaseProcess_noPriorWindow):
             self.x_shift_spin.setValue(self.x_shift_spin.value() + 1)
         if event.key() == 16777220: # Enter
             self.call_from_gui()
+            self.gui.close()
         event.accept()
 
-    def preview(self, extra=0):
+    def closeEvent(self, event):
+        if self.current_red != None:
+            self.current_red.sigTimeChanged.disconnect(self.changed)
+        if self.current_green != None:
+            self.current_green.sigTimeChanged.disconnect(self.changed)
+        BaseProcess_noPriorWindow.closeEvent(self, event)
+
+    def indexChanged(self, i):
+        self.preview()
+
+    def preview(self):
+        if self.previewing:
+            return
+        self.previewing = True
         winRed = self.getValue('red_window')
         winGreen = self.getValue('green_window')
+
+        if self.current_red != winRed:
+            if self.current_red != None:
+                self.current_red.sigTimeChanged.disconnect(self.indexChanged)
+            winRed.sigTimeChanged.connect(self.indexChanged)
+        if self.current_red != winGreen:
+            if self.current_green != None:
+                self.current_green.sigTimeChanged.disconnect(self.indexChanged)
+            winGreen.sigTimeChanged.connect(self.indexChanged)
+        self.current_green = winGreen
+        self.current_red = winRed
 
         x_shift = self.getValue('x_shift')
         y_shift = self.getValue('y_shift')
@@ -102,6 +130,7 @@ class Beam_Splitter(BaseProcess_noPriorWindow):
             else:
                 self.window.imageview.setImage(stacked, autoLevels=False, autoRange=False)
             self.window.show()
+            self.previewing = False
 
     def gui(self):
         self.gui_reset()
