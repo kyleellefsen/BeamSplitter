@@ -95,17 +95,13 @@ class Beam_Splitter(BaseProcess_noPriorWindow):
             
             imZ = np.zeros_like(imR)
             stacked = np.dstack((imR, imG, imZ))
-            if not hasattr(self, 'window') or not self.window.isVisible():
+            if not hasattr(self, 'window'):
                 self.window = Window(stacked)
                 self.window.imageview.setLevels(self.minlevel, self.maxlevel)
                 self.window.imageview.keyPressEvent = self.keyPressed
-                self.window.closeEvent = self.closeEvent
             else:
                 self.window.imageview.setImage(stacked, autoLevels=False, autoRange=False)
-        
-    def closeEvent(self, event):
-        self.ui.close()
-        event.accept()
+            self.window.show()
 
     def gui(self):
         self.gui_reset()
@@ -114,7 +110,7 @@ class Beam_Splitter(BaseProcess_noPriorWindow):
         self.x_shift_spin = pg.SpinBox(int=True, step=1)
         self.y_shift_spin = pg.SpinBox(int=True, step=1)
 
-        self.items.append({'name': 'red_window', 'string': 'Overlay Red Windows', 'object': red_window})
+        self.items.append({'name': 'red_window', 'string': 'Overlay Red Window', 'object': red_window})
         self.items.append({'name': 'green_window', 'string': 'With Green Window', 'object': self.green_window})
         self.items.append({'name': 'x_shift', 'string': 'X Pixel Shift', 'object': self.x_shift_spin})
         self.items.append({'name': 'y_shift', 'string': 'Y Pixel Shift', 'object': self.y_shift_spin})
