@@ -16,13 +16,11 @@ class Beam_Splitter(BaseProcess_noPriorWindow):
         BaseProcess_noPriorWindow.__init__(self)
         self.current_red = None
         self.current_green = None
-        self.previewing = False
 
     def __call__(self, red_window, green_window, x_shift, y_shift):
         '''
         plots red_window over green_window, shifted by (x_shift, y_shift) pixels
         '''
-        self.previewing = False
         self.window.close()
         del self.window
         g.m.statusBar().showMessage("Applying beam splitter shift ...")
@@ -90,9 +88,6 @@ class Beam_Splitter(BaseProcess_noPriorWindow):
         self.preview()
 
     def preview(self):
-        if self.previewing:
-            return
-        self.previewing = True
         winRed = self.getValue('red_window')
         winGreen = self.getValue('green_window')
 
@@ -128,7 +123,6 @@ class Beam_Splitter(BaseProcess_noPriorWindow):
             self.window.show()
         else:
             self.window.hide()
-        self.previewing = False
 
     def gui(self):
         self.gui_reset()
