@@ -33,15 +33,17 @@ will be displayed over the current frame of the red window. Then use the arrow k
         imR = red_window.imageview.image
         t, w, h = imR.shape
         if red_window != None and green_window != None:
-            gName = "%s shifted (%d, %d)" % (green_window.name, x_shift, y_shift)
+            self.newname = "%s shifted (%d, %d)" % (green_window.name, x_shift, y_shift)
             imG = green_window.imageview.image
+        else:
+            return
         imG = self.pad_shift(imG, np.shape(imR), x_shift, y_shift)
-        command = 'beam_splitter(%s, %s, %s, %s)' % (red_window, green_window, x_shift, y_shift)
+        self.command = 'beam_splitter(%s, %s, %s, %s)' % (red_window, green_window, x_shift, y_shift)
         g.m.statusBar().showMessage("Successfully shifted (%s s)" % (time() - t))
-        green_window.imageview.setImage(imG)
-        green_window.setName(gName)
-        green_window.commands = [command]
-        green_window.imageview.setLevels(self.minlevel, self.maxlevel)
+        self.newtif = imG
+        win = self.end()
+        win.imageview.setLevels(self.minlevel, self.maxlevel)
+        return win
 
     def pad_shift(self, imGreen, size, x_shift, y_shift):
         '''
