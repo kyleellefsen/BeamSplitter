@@ -109,15 +109,10 @@ class Beam_Splitter(BaseProcess_noPriorWindow):
 
         x_shift = self.getValue('x_shift')
         y_shift = self.getValue('y_shift')
-        if winRed != None:
+        if winRed != None and winGreen != None:
             imR = winRed.image[winRed.currentIndex]
             w, h = imR.shape
-            if winGreen != None:
-                imG = winGreen.image[winGreen.currentIndex]
-            else:
-                if hasattr(self, 'window'):
-                    self.window.hide()
-                return
+            imG = winGreen.image[winGreen.currentIndex]
             imG = self.pad_shift(imG, np.shape(imR), x_shift, y_shift)
             self.minlevel = np.min([np.min(imG), np.min(imR)])
             self.maxlevel = np.max([np.max(imG), np.max(imR)])
@@ -131,7 +126,9 @@ class Beam_Splitter(BaseProcess_noPriorWindow):
             else:
                 self.window.imageview.setImage(stacked, autoLevels=False, autoRange=False)
             self.window.show()
-            self.previewing = False
+        else:
+            self.window.hide()
+        self.previewing = False
 
     def gui(self):
         self.gui_reset()
