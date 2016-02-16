@@ -16,6 +16,7 @@ class Beam_Splitter(BaseProcess_noPriorWindow):
         BaseProcess_noPriorWindow.__init__(self)
         self.current_red = None
         self.current_green = None
+        self.previewing = False
 
     def __call__(self, red_window, green_window, x_shift, y_shift):
         '''
