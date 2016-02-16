@@ -12,6 +12,10 @@ import pyqtgraph as pg
 from time import time
 
 class Beam_Splitter(BaseProcess_noPriorWindow):
+    '''
+Overlay two image stacks to correct for xy pixel shift.  The current frame of the green window (or the smaller image if red is smaller) \
+will be displayed over the current frame of the red window. Then use the arrow keys to align the movies.
+    '''
     def __init__(self):
         BaseProcess_noPriorWindow.__init__(self)
         self.current_red = None
@@ -21,15 +25,16 @@ class Beam_Splitter(BaseProcess_noPriorWindow):
         '''
         plots red_window over green_window, shifted by (x_shift, y_shift) pixels
         '''
+        self.unlink_frames(self.current_red, self.current_green)
         self.window.close()
         del self.window
         g.m.statusBar().showMessage("Applying beam splitter shift ...")
         t = time()
-        imR = red_window.image
+        imR = red_window.imageview.image
         t, w, h = imR.shape
         if red_window != None and green_window != None:
             gName = "%s shifted (%d, %d)" % (green_window.name, x_shift, y_shift)
-            imG = green_window.image
+            imG = green_window.imageview.image
         imG = self.pad_shift(imG, np.shape(imR), x_shift, y_shift)
         command = 'beam_splitter(%s, %s, %s, %s)' % (red_window, green_window, x_shift, y_shift)
         g.m.statusBar().showMessage("Successfully shifted (%s s)" % (time() - t))
@@ -73,56 +78,67 @@ class Beam_Splitter(BaseProcess_noPriorWindow):
         if event.key() == Qt.Key_Right:
             self.x_shift_spin.setValue(self.x_shift_spin.value() + 1)
         if event.key() == 16777220: # Enter
+            self.ui.close()
             self.call_from_gui()
-            self.gui.close()
+            
         event.accept()
 
     def closeEvent(self, event):
-        if self.current_red != None:
-            self.current_red.sigTimeChanged.disconnect(self.changed)
-        if self.current_green != None:
-            self.current_green.sigTimeChanged.disconnect(self.changed)
+        self.unlink_frames(self.current_red, self.current_green)
         BaseProcess_noPriorWindow.closeEvent(self, event)
 
     def indexChanged(self, i):
-        self.preview()
+        if self.ui.isVisible():
+            self.preview()
+
+    def unlink_frames(self, *windows):
+        for window in windows:
+            if window != None:
+                try:
+                    window.sigTimeChanged.disconnect(self.indexChanged)
+                except:
+                    pass
 
     def preview(self):
         winRed = self.getValue('red_window')
         winGreen = self.getValue('green_window')
-
-        if self.current_red != winRed:
-            if self.current_red != None:
-                self.current_red.sigTimeChanged.disconnect(self.indexChanged)
-            winRed.sigTimeChanged.connect(self.indexChanged)
-        if self.current_red != winGreen:
-            if self.current_green != None:
-                self.current_green.sigTimeChanged.disconnect(self.indexChanged)
-            winGreen.sigTimeChanged.connect(self.indexChanged)
-        self.current_green = winGreen
-        self.current_red = winRed
-
         x_shift = self.getValue('x_shift')
         y_shift = self.getValue('y_shift')
-        if winRed != None and winGreen != None:
-            imR = winRed.image[winRed.currentIndex]
-            w, h = imR.shape
-            imG = winGreen.image[winGreen.currentIndex]
-            imG = self.pad_shift(imG, np.shape(imR), x_shift, y_shift)
-            self.minlevel = np.min([np.min(imG), np.min(imR)])
-            self.maxlevel = np.max([np.max(imG), np.max(imR)])
-            
-            imZ = np.zeros_like(imR)
-            stacked = np.dstack((imR, imG, imZ))
-            if not hasattr(self, 'window'):
-                self.window = Window(stacked)
-                self.window.imageview.setLevels(self.minlevel, self.maxlevel)
-                self.window.imageview.keyPressEvent = self.keyPressed
-            else:
-                self.window.imageview.setImage(stacked, autoLevels=False, autoRange=False)
-            self.window.show()
-        elif hasattr(self, "window"):
-            self.window.hide()
+        
+        if not winRed or not winGreen:
+            if hasattr(self, "window"):
+                self.window.hide()
+            return
+
+        if self.current_red != winRed:
+            self.unlink_frames(self.current_red)
+            winRed.sigTimeChanged.connect(self.indexChanged)
+            self.current_red = winRed
+        
+        if self.current_green != winGreen:
+            self.unlink_frames(self.current_green)
+            winGreen.sigTimeChanged.connect(self.indexChanged)
+            self.current_green = winGreen    
+
+        imR = winRed.imageview.image[winRed.currentIndex]
+        imG = winGreen.imageview.image[winGreen.currentIndex]
+        if np.size(imR) < np.size(imG):
+            imG, imR = imR, imG
+
+        w, h = imR.shape
+        imG = self.pad_shift(imG, np.shape(imR), x_shift, y_shift)
+        self.minlevel = np.min([np.min(imG), np.min(imR)])
+        self.maxlevel = np.max([np.max(imG), np.max(imR)])
+        
+        imZ = np.zeros_like(imR)
+        stacked = np.dstack((imR, imG, imZ))
+        if not hasattr(self, 'window') or self.window.closed:
+            self.window = Window(stacked, name="Beam Splitter Overlay Frame")
+            self.window.imageview.setLevels(self.minlevel, self.maxlevel)
+            self.window.imageview.keyPressEvent = self.keyPressed
+        else:
+            self.window.imageview.setImage(stacked, autoLevels=False, autoRange=False)
+        self.window.show()
 
     def gui(self):
         self.gui_reset()
