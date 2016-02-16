@@ -121,7 +121,7 @@ class Beam_Splitter(BaseProcess_noPriorWindow):
             else:
                 self.window.imageview.setImage(stacked, autoLevels=False, autoRange=False)
             self.window.show()
-        else:
+        elif hasattr(self, "window"):
             self.window.hide()
 
     def gui(self):
