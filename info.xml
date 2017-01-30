@@ -5,9 +5,9 @@
 	<base_dir>
 		BeamSplitter
 	</base_dir>
-	<date>
-		01/30/2017
-	</date>
+	<version>
+		0.0.1
+	</version>
 	<url>
 		http://github.com/BrettJSettle/BeamSplitter/archive/master.zip
 	</url>
