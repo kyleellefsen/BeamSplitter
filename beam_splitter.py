@@ -3,7 +3,7 @@ from __future__ import (absolute_import, division,print_function, unicode_litera
 from flika.app.BaseProcess import BaseProcess_noPriorWindow, WindowSelector
 from qtpy.QtCore import *
 from qtpy.QtGui import *
-from qtpy.Widgets import *
+from qtpy.QtWidgets import *
 import numpy as np
 from scipy.ndimage.interpolation import shift
 from flika.window import Window
