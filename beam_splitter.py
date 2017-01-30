@@ -1,13 +1,13 @@
 from __future__ import (absolute_import, division,print_function, unicode_literals)
-from future.builtins import (bytes, dict, int, list, object, range, str, ascii, chr, hex, input, next, oct, open, pow, round, super, filter, map, zip)
 
-from process.BaseProcess import BaseProcess_noPriorWindow, WindowSelector
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from flika.app.BaseProcess import BaseProcess_noPriorWindow, WindowSelector
+from qtpy.QtCore import *
+from qtpy.QtGui import *
+from qtpy.Widgets import *
 import numpy as np
 from scipy.ndimage.interpolation import shift
-from window import Window
-import global_vars as g
+from flika.window import Window
+import flika.global_vars as g
 import pyqtgraph as pg
 from time import time
 
