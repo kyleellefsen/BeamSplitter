@@ -1,6 +1,4 @@
-from __future__ import (absolute_import, division,print_function, unicode_literals)
-
-from flika.app.BaseProcess import BaseProcess_noPriorWindow, WindowSelector
+from flika.process.BaseProcess import BaseProcess_noPriorWindow, WindowSelector
 from qtpy.QtCore import *
 from qtpy.QtGui import *
 from qtpy.QtWidgets import *
