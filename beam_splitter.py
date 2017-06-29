@@ -30,8 +30,7 @@ class Beam_Splitter(BaseProcess_noPriorWindow):
         del self.window
         g.m.statusBar().showMessage("Applying beam splitter shift ...")
         t = time()
-        imR = red_window.imageview.image
-        t, w, h = imR.shape
+        imR = red_window.image
         if red_window != None and green_window != None:
             self.newname = "%s shifted (%d, %d)" % (green_window.name, x_shift, y_shift)
             imG = green_window.imageview.image
