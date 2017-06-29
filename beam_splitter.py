@@ -10,10 +10,12 @@ import pyqtgraph as pg
 from time import time
 
 class Beam_Splitter(BaseProcess_noPriorWindow):
-    '''
-Overlay two image stacks to correct for xy pixel shift.  The current frame of the green window (or the smaller image if red is smaller) \
-will be displayed over the current frame of the red window. Then use the arrow keys to align the movies.
-    '''
+    """
+    Overlay two image stacks to correct for xy pixel shift.  
+    The current frame of the green window (or the smaller image if red is smaller)
+    will be displayed over the current frame of the red window. 
+    Use the arrow keys to align the movies.
+    """
     def __init__(self):
         BaseProcess_noPriorWindow.__init__(self)
         self.current_red = None
@@ -35,7 +37,7 @@ will be displayed over the current frame of the red window. Then use the arrow k
             imG = green_window.imageview.image
         else:
             return
-        imG = self.pad_shift(imG, np.shape(imR), x_shift, y_shift)
+        imG = self.pad_shift(imG, imR, x_shift, y_shift)
         self.command = 'beam_splitter(%s, %s, %s, %s)' % (red_window, green_window, x_shift, y_shift)
         g.m.statusBar().showMessage("Successfully shifted (%s s)" % (time() - t))
         self.newtif = imG
@@ -43,27 +45,35 @@ will be displayed over the current frame of the red window. Then use the arrow k
         win.imageview.setLevels(self.minlevel, self.maxlevel)
         return win
 
-    def pad_shift(self, imGreen, size, x_shift, y_shift):
+    def pad_shift(self, imGreen, imR, x_shift, y_shift):
         '''
         shift imGreen by (x_shift, y_shift) onto an empty array of size similar to imRed
         '''
-        g_size = imGreen.shape
-        imGreen_shifted = np.zeros(size)
         if imGreen.ndim == 2:
-            imGreen_shifted[:g_size[0], :g_size[1]] = imGreen
+            g_mx, g_my = imGreen.shape
+        elif imGreen.ndim == 3:
+            g_mt, g_mx, g_my = imGreen.shape
+        if imR.ndim == 2:
+            r_mx, r_my = imR.shape
+        elif imR.ndim == 3:
+            r_mt, r_mx, r_my = imR.shape
+
+
+        if imGreen.ndim == 2:
+            imGreen_shifted = np.zeros((r_mx, r_my))
+            imGreen_shifted[:g_mx, :g_my] = imGreen
             imGreen_shifted = shift(imGreen_shifted, (x_shift, y_shift))
         elif imGreen.ndim == 3:
-            rt, rw, rh = size
-            gt, gw, gh = g_size
+            imGreen_shifted = np.zeros((g_mt, r_mx, r_my))
             r_left = max(0, x_shift)
             r_top = max(0, y_shift)
-            r_right = min(rw, gw + x_shift)
-            r_bottom = min(rh, gh + y_shift)
+            r_right = min(r_mx, g_mx + x_shift)
+            r_bottom = min(r_my, g_my + y_shift)
 
             g_left = max(0, -x_shift)
             g_top = max(0, -y_shift)
-            g_right = min(gw, rw - x_shift)
-            g_bottom = min(gh, rh - y_shift)
+            g_right = min(g_mx, r_mx - x_shift)
+            g_bottom = min(g_my, r_my - y_shift)
             
             imGreen_shifted[:, r_left:r_right, r_top:r_bottom] = imGreen[:, g_left:g_right, g_top:g_bottom]        
         return imGreen_shifted
@@ -77,7 +87,7 @@ will be displayed over the current frame of the red window. Then use the arrow k
             self.x_shift_spin.setValue(self.x_shift_spin.value() - 1)
         if event.key() == Qt.Key_Right:
             self.x_shift_spin.setValue(self.x_shift_spin.value() + 1)
-        if event.key() == 16777220: # Enter
+        if event.key() == 16777220:  # Enter
             self.ui.close()
             self.call_from_gui()
             
@@ -118,15 +128,14 @@ will be displayed over the current frame of the red window. Then use the arrow k
         if self.current_green != winGreen:
             self.unlink_frames(self.current_green)
             winGreen.sigTimeChanged.connect(self.indexChanged)
-            self.current_green = winGreen    
+            self.current_green = winGreen
 
         imR = winRed.imageview.image[winRed.currentIndex]
         imG = winGreen.imageview.image[winGreen.currentIndex]
         if np.size(imR) < np.size(imG):
             imG, imR = imR, imG
 
-        w, h = imR.shape
-        imG = self.pad_shift(imG, np.shape(imR), x_shift, y_shift)
+        imG = self.pad_shift(imG, imR, x_shift, y_shift)
         self.minlevel = np.min([np.min(imG), np.min(imR)])
         self.maxlevel = np.max([np.max(imG), np.max(imR)])
         
