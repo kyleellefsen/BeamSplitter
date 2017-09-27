@@ -1,13 +1,19 @@
-from flika.process.BaseProcess import BaseProcess_noPriorWindow, WindowSelector
 from qtpy.QtCore import *
 from qtpy.QtGui import *
 from qtpy.QtWidgets import *
 import numpy as np
+from distutils.version import StrictVersion
 from scipy.ndimage.interpolation import shift
+import flika
 from flika.window import Window
 import flika.global_vars as g
 import pyqtgraph as pg
 from time import time
+flika_version = flika.__version__
+if StrictVersion(flika_version) < StrictVersion('0.2.23'):
+    from flika.process.BaseProcess import BaseProcess_noPriorWindow, WindowSelector
+else:
+    from flika.utils.BaseProcess import BaseProcess_noPriorWindow, WindowSelector
 
 class Beam_Splitter(BaseProcess_noPriorWindow):
     """
